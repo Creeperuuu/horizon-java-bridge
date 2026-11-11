@@ -1789,6 +1789,11 @@ pub fn launch(
     store: &dyn SecretStore,
     accounts: &mut Accounts,
 ) -> Result<Launch, NoOwner> {
+    // Owner proof belongs to this launch only. Never reuse a previous Play's proof when the
+    // current session falls back to an offline player.
+    if let Ok(mut last) = LAST_OWNER.lock() {
+        *last = None;
+    }
     let selected = accounts.selected.clone();
     let mut order = accounts.accounts.clone();
     order.sort_by_key(|a| Some(&a.uuid) != selected.as_ref());
