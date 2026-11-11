@@ -1,9 +1,8 @@
 //! Fabric 26.3 mods (beta): the game build with the Java mod bridge (docs/java-bridge.md), per
 //! instance. Off by default: an instance plays the plain build, has no Java mods tab and never
 //! starts Java, even with jars in its `mods-java/`. On: the launcher installs the version's
-//! Java mods build (`<asset>-java`: its release's own, else the fork's, [`java_release`](crate::java_release)) in
-//! the version's `java/` folder, beside the plain one, where it plays with the version's prepared files, and starts it with
-//! [`OPT_IN_ARG`] and the Java 25 to run the mods on ([`JAVA_HOME_VAR`]).
+//! Fabric-enabled game build in the version's `java/` folder and starts it with [`OPT_IN_ARG`]
+//! and a local Java 25 JDK ([`JAVA_HOME_VAR`]).
 //!
 //! The Fabric game build comes from this project's GitHub releases. Minecraft's own game jar and
 //! libraries must already be available locally for offline play; missing Mojang files still use
@@ -25,11 +24,9 @@ pub const OPT_IN_ARG: &str = "--java-mods";
 /// The game's variable that turns Fabric mods on for developers' harnesses
 /// (`horizon_jvm::gate::DEV_VAR`): never passed by the launcher.
 const OPT_IN_VAR: &str = "HORIZON_JAVA_MODS";
-/// The owner record's path, beside [`OPT_IN_ARG`] (`horizon_jvm::gate::OWNER_VAR`): the session
-/// file of the account the owner gate just heard own the game (`account::write_owner_record`),
-/// which the game checks with the Minecraft services itself. Without one that passes the game
-/// runs no Fabric mods and downloads nothing for them. Set only by [`switch_command`], which runs
-/// on Play's command after the gate.
+/// The one-use launch record path, beside [`OPT_IN_ARG`]. It is either an online owner proof
+/// checked with the Minecraft services or an offline marker with no credentials. Set only by
+/// [`switch_command`] for a launcher-started game.
 pub const OWNER_VAR: &str = "HORIZON_JAVA_MODS_OWNER";
 /// The Minecraft services the game checks the owner record with (`horizon_jvm::gate::SERVICES`).
 const SERVICES_URL: &str = "https://api.minecraftservices.com/";
@@ -69,8 +66,7 @@ pub fn java_home() -> Option<PathBuf> {
         .map(|r| r.home)
 }
 
-/// [`java_home`], else Mojang's Java 25 downloaded now, its lines to `log`. The caller has
-/// passed the owner gate.
+/// A local Java 25 JDK (including javac); offline setup never downloads Mojang's runtime.
 fn ensure_java(_log: &dyn Fn(&str)) -> Result<PathBuf, String> {
     java_home().ok_or_else(|| {
         "Fabric mods need a locally installed Java 25 JDK (including javac). Install a Java 25 JDK before playing offline.".into()
@@ -265,10 +261,8 @@ fn one_at_a_time() -> std::sync::MutexGuard<'static, ()> {
     BUILD_LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Installs `tag`'s Java mods build unless it has it (the release of that tag, from GitHub, else
-/// the fork's), and Java 25 unless there is one: only past the owner gate, when something is
-/// missing. An installed build stays as it is: a new version gets its own, and [`update`]
-/// replaces it when the player asks.
+/// Installs `tag`'s Fabric-enabled build from GitHub and requires a local Java 25 JDK. Minecraft
+/// files remain subject to the normal local-source / owner-gated Mojang preparation rules.
 pub fn ensure(tag: &str, progress: impl Fn(f32)) -> Result<(), String> {
     ensure_with(tag, &progress, &|line| eprintln!("{line}"))
 }
@@ -336,9 +330,8 @@ fn has_libraries(minecraft: &Path) -> bool {
     false
 }
 
-/// [`game_jar`] and the libraries, past the owner gate: copied, checked, from an installed
-/// version that has them, else imported as Prepare imports them (the player's Minecraft
-/// folder, or Mojang's download for the owner).
+/// [`game_jar`] and libraries: copied from a local Minecraft install when present, otherwise
+/// imported/prepared through the launcher's normal owner-gated Mojang download path.
 fn ensure_game_files(tag: &str, say: &dyn Fn(&str)) -> Result<(), String> {
     if has_game_files(tag) {
         return Ok(());
@@ -492,7 +485,7 @@ fn switch_command_for(cmd: &mut Command, record: &Path) -> Result<(), String> {
     if let Some(folder) = cmd.get_current_dir() {
         next.current_dir(folder);
     }
-    // The Java the launcher has for the mods ([`ensure`] got it past the owner gate).
+    // The local Java 25 JDK selected by the launcher for the Fabric bridge.
     if !cmd.get_envs().any(|(k, _)| k == JAVA_HOME_VAR) {
         if let Some(home) = java_home() {
             next.env(JAVA_HOME_VAR, home);
