@@ -32,9 +32,10 @@ pub(in crate::game) fn opted_in() -> bool {
                 );
             }
             OptIn::Launcher => {
-                log::info!(
-                    "Java mods: on (the launcher's owner, confirmed by the Minecraft services)"
-                )
+                log::info!("Java mods: on (the launcher's owner, confirmed by the Minecraft services)")
+            }
+            OptIn::Offline => {
+                log::info!("Java mods: on (the launcher's offline session; no account token)")
             }
             #[cfg(feature = "java-mods-dev")]
             OptIn::Developer => {
