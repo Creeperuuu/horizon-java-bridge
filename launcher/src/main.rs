@@ -1825,7 +1825,8 @@ impl Launcher {
         self.play_pressed = Some(Instant::now());
         let tx = self.tx.clone();
         let java_build = self.java_build_at_play();
-        // Fabric mods play only for a signed-in owner: never the offline pass.
+        // Offline play applies to Fabric-mod instances too; the game receives a private
+        // one-use offline record when this launch has no freshly confirmed owner.
         let offline_without_owner = self.settings.offline_play();
         std::thread::spawn(move || {
             if let Err(e) = java_mods_page::ensure_at_play(java_build, &tag, &tx) {
