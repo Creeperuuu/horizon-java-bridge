@@ -1167,8 +1167,5 @@
   "Off: offline names play without signing in. Downloading Minecraft from Mojang always needs a Microsoft account that owns it.": "Off: offline names play without signing in. Downloading Minecraft from Mojang always needs a Microsoft account that owns it.",
   "Require a Microsoft account to play": "Require a Microsoft account to play",
   "Runs the Fabric mods in this instance's mods-java folder. Offline play needs the local Minecraft 26.3 files and a Java 25 JDK; missing Minecraft files still require a signed-in account to download.": "Runs the Fabric mods in this instance's mods-java folder. Offline play needs the local Minecraft 26.3 files and a Java 25 JDK; missing Minecraft files still require a signed-in account to download.",
-  "Sign in with a Minecraft account first, or enable offline play.": "Sign in with a Minecraft account first, or enable offline play.",
-  "Offline names play without a Microsoft account that owns the game. Minecraft still comes from your own install.": "Les noms hors ligne permettent de jouer sans compte Microsoft possédant le jeu. Minecraft provient toujours de votre propre installation.",
-  "Offline names without an account": "Noms hors ligne sans compte",
-  "Runs the Fabric mods in this instance's mods-java folder. Off, the game never starts Java. On, once you're signed in with an account that owns Minecraft, the launcher downloads Horizon's build with Java mods, and Java 25 if you have none.": "Exécute les mods Fabric du dossier mods-java de cette instance. Désactivé, le jeu ne démarre jamais Java. Activé, après connexion avec un compte possédant Minecraft, le lanceur télécharge la version de Horizon avec les mods Java, ainsi que Java 25 si nécessaire."
+  "Sign in with a Minecraft account first, or enable offline play.": "Sign in with a Minecraft account first, or enable offline play."
 }
