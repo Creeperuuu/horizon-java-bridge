@@ -587,3 +587,10 @@ Offline names play without signing in to Microsoft (the game must already be on 
 Downloading anything from Mojang (the game, its libraries and assets, Java) still needs a Microsoft
 account that owns Minecraft: Java Edition. Settings > Developer options (seven clicks on the
 sidebar's launcher version) has "Require a Microsoft account to play" to turn offline play off.
+
+Fabric 26.3 mods can also run in offline mode if the Minecraft game jar, libraries and assets are
+already present locally, and a Java 25 JDK (including `javac`) is installed. The launcher fetches
+the Fabric-enabled Horizon build from GitHub and Fabric's libraries from Fabric's public servers;
+it does not download missing Minecraft files or Java from Mojang without an owner account. Offline
+sessions use a one-use local marker with no account token and cannot authenticate to online-mode
+multiplayer servers.
