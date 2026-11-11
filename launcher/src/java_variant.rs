@@ -54,13 +54,6 @@ pub const WARNING: [&str; 3] = [
      open without them.",
 ];
 
-/// Finds a locally installed Java 25 JDK. Offline mode does not fetch a Mojang runtime.
-fn ensure_java(_log: &dyn Fn(&str)) -> Result<PathBuf, String> {
-    java_home().ok_or_else(|| {
-        "Fabric mods need a locally installed Java 25 JDK (with javac) when playing offline. Install a Java 25 JDK or sign in to use the launcher's normal runtime download.".into()
-    })
-}
-
 /// A Java 25 JDK here for the mods (the bridge builds its platform mod with `javac`):
 /// `HORIZON_JAVA_HOME` when set, else Mojang's runtime the launcher downloaded, else one
 /// installed on this computer.
@@ -78,15 +71,10 @@ pub fn java_home() -> Option<PathBuf> {
 
 /// [`java_home`], else Mojang's Java 25 downloaded now, its lines to `log`. The caller has
 /// passed the owner gate.
-fn ensure_java(log: &dyn Fn(&str)) -> Result<PathBuf, String> {
-    if let Some(home) = java_home() {
-        return Ok(home);
-    }
-    let need = java::Need::named(&JAVA_MAJOR.to_string())?;
-    log(crate::i18n::tr("Downloading Java 25 for Fabric mods…"));
-    java::install(&need, &|line| log(&line))
-        .map(|r| r.home)
-        .map_err(|e| format!("Java {JAVA_MAJOR} for Fabric mods: {e}"))
+fn ensure_java(_log: &dyn Fn(&str)) -> Result<PathBuf, String> {
+    java_home().ok_or_else(|| {
+        "Fabric mods need a locally installed Java 25 JDK (including javac). Install a Java 25 JDK before playing offline.".into()
+    })
 }
 
 /// game-build.yml's Java mods builds: (`std::env::consts::OS`, `ARCH`, the asset). None for macOS yet.
