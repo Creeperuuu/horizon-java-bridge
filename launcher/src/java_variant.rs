@@ -5,10 +5,10 @@
 //! the version's `java/` folder, beside the plain one, where it plays with the version's prepared files, and starts it with
 //! [`OPT_IN_ARG`] and the Java 25 to run the mods on ([`JAVA_HOME_VAR`]).
 //!
-//! Nothing for the mods is downloaded before the owner gate: the build and Mojang's Java for the
-//! version (`java-runtime-epsilon`) come only for a signed-in account that owns Minecraft: Java
-//! Edition ([`owner_signed_in`]), and Play with the switch on never takes the developer option's
-//! way past the gate (offline play, `Settings::offline_play`). The game itself downloads no Java.
+//! The Fabric game build comes from this project's GitHub releases. Minecraft's own game jar and
+//! libraries must already be available locally for offline play; missing Mojang files still use
+//! the launcher's normal owner-gated download path. Offline Fabric launches also need a local
+//! Java 25 JDK (including javac); this module never downloads Mojang's Java without sign-in.
 use crate::backend::{self, Release, CLIENT};
 use crate::{account, java};
 use std::fs;
@@ -54,21 +54,11 @@ pub const WARNING: [&str; 3] = [
      open without them.",
 ];
 
-/// The strict owner gate (never the developer option's offline pass), asked before any download
-/// for the mods, as `backend::download_for_owner` asks it before downloading the game.
-pub fn owner_signed_in() -> Result<(), String> {
-    let mut accounts = account::Accounts::load();
-    let pass = account::launch(
-        &account::Endpoints::live(),
-        account::client_id().as_deref(),
-        account::store(),
-        &mut accounts,
-    );
-    if let Err(e) = accounts.save() {
-        eprintln!("Horizon: the accounts are not saved: {e}");
-    }
-    pass.map(|_| ())
-        .map_err(|_| crate::i18n::tr(SIGN_IN_FIRST).to_string())
+/// Finds a locally installed Java 25 JDK. Offline mode does not fetch a Mojang runtime.
+fn ensure_java(_log: &dyn Fn(&str)) -> Result<PathBuf, String> {
+    java_home().ok_or_else(|| {
+        "Fabric mods need a locally installed Java 25 JDK (with javac) when playing offline. Install a Java 25 JDK or sign in to use the launcher's normal runtime download.".into()
+    })
 }
 
 /// A Java 25 JDK here for the mods (the bridge builds its platform mod with `javac`):
@@ -301,7 +291,6 @@ pub fn ensure_with(tag: &str, progress: &dyn Fn(f32), log: &dyn Fn(&str)) -> Res
     if is_installed(tag) && java_home().is_some() && has_game_files(tag) {
         return Ok(());
     }
-    owner_signed_in()?;
     ensure_game_files(tag, log)?;
     if !is_installed(tag) {
         log(&crate::i18n::trf(
@@ -419,13 +408,11 @@ fn fetch(tag: &str, progress: &dyn Fn(f32)) -> Result<(), String> {
     fork::or_fork(own, tag, progress)
 }
 
-/// Downloads `tag`'s Java mods build again, the newest that fits it and this launcher
-/// (`java-mods update`): the only way an installed build changes besides a new version. Past the
-/// owner gate.
+/// Downloads `tag`'s Java mods build again from GitHub. Minecraft files are not downloaded by
+/// this operation; Java 25 must already be installed locally.
 pub fn update(tag: &str, progress: impl Fn(f32)) -> Result<(), String> {
     let _one = one_at_a_time();
     let log = |line: &str| eprintln!("{line}");
-    owner_signed_in()?;
     ensure_game_files(tag, &log)?;
     fetch(tag, &progress)?;
     ensure_java(&log).map(|_| ())
@@ -443,10 +430,6 @@ pub fn follow(release: &Release, tag: &str) {
     }
     let _one = one_at_a_time();
     if is_installed(tag) {
-        return;
-    }
-    if let Err(e) = owner_signed_in() {
-        eprintln!("Fabric mods build of {tag} not installed: {e}");
         return;
     }
     if let Err(e) = fork::or_fork(install(release, tag, |_| {}), tag, &|_| {}) {
@@ -481,17 +464,16 @@ pub fn apply(cmd: &mut Command, instance: &crate::instances::Instance) -> Result
     Ok(())
 }
 
-/// Turns the plain game's command (`backend::client_command`) into the Java mods build's: the
-/// same arguments, folder and variables, with [`OPT_IN_ARG`] and the owner record the owner gate
-/// allows ([`OWNER_VAR`]). Refused when there is none (no owner answered just now: offline).
+/// Turns the plain game's command into the Java mods build's. A fresh online owner record is
+/// preferred; when offline play is enabled, a private one-use offline marker is accepted instead.
 pub fn switch_command(cmd: &mut Command) -> Result<(), String> {
-    let record = account::write_owner_record()?;
+    let record = account::write_mods_record(backend::Settings::load().offline_play())?;
     switch_command_for(cmd, &record).inspect_err(|_| {
         let _ = fs::remove_file(&record);
     })
 }
 
-/// [`switch_command`] with the owner record at `record`.
+/// [`switch_command`] with the launch record at `record`.
 fn switch_command_for(cmd: &mut Command, record: &Path) -> Result<(), String> {
     let plain = PathBuf::from(cmd.get_program());
     let version = plain
@@ -528,9 +510,8 @@ fn switch_command_for(cmd: &mut Command, record: &Path) -> Result<(), String> {
             next.env(JAVA_HOME_VAR, home);
         }
     }
-    // Play builds this command only past the owner gate (`client_as`, the window's session,
-    // MCP's `play`): the game runs the mods only with an owner record it confirms. A developer's
-    // `HORIZON_JAVA_MODS=1` in the launcher's own environment doesn't reach it.
+    // The game validates this short-lived, private launch record itself. A developer's
+    // `HORIZON_JAVA_MODS=1` in the launcher's environment doesn't reach release builds.
     next.env_remove(OPT_IN_VAR).env(OWNER_VAR, record);
     // The launcher's proxy (Settings > Proxy) for the game's own requests: the owner check with
     // the Minecraft services and Fabric's downloads (horizon-jvm's agent reads HTTPS_PROXY).
