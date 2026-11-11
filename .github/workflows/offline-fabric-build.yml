@@ -1,0 +1,74 @@
+name: Offline Fabric mods build
+# Compile the offline-capable game and launcher on demand. No Minecraft account or Mojang
+# credentials are used by this build; it packages binaries only, not game files or mods.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: offline-fabric-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-22.04
+            exe: ''
+            rustflags: ''
+          - name: windows-x86_64
+            os: windows-latest
+            exe: '.exe'
+            rustflags: '-C target-feature=+crt-static'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      RUSTFLAGS: ${{ matrix.rustflags }}
+      HORIZON_BRIDGE_PLATFORM: source
+      HORIZON_TELEMETRY_URL: off
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: offline-play
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: offline-fabric-${{ matrix.name }}
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libfontconfig-dev libvulkan-dev
+      - name: Java 25 for bridge build
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Test offline gate and launcher code
+        run: |
+          cargo test --release --locked -p horizon-jvm --lib
+          cd launcher
+          cargo test --release --locked --lib -- java_release java_variant
+      - name: Build game with Fabric bridge
+        run: |
+          cargo build --release --locked -p horizon-client --features java-mods --bin horizon-client
+          target/release/horizon-client${{ matrix.exe }} --help
+      - name: Build launcher
+        working-directory: launcher
+        run: cargo build --release --locked
+      - name: Collect
+        shell: bash
+        run: |
+          mkdir -p out
+          cp target/release/horizon-client${{ matrix.exe }} out/
+          cp launcher/target/release/horizon-launcher${{ matrix.exe }} out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horizon-offline-fabric-${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
