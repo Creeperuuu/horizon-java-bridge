@@ -92,6 +92,8 @@ pub enum OptIn {
     Off,
     /// The launcher started it for an owner, confirmed by the Minecraft services.
     Launcher,
+    /// The launcher explicitly started an offline session (no account credentials).
+    Offline,
     /// A developer's harness (`HORIZON_JAVA_MODS=1`, `dev` builds only).
     #[cfg(feature = "dev")]
     Developer,
@@ -103,7 +105,7 @@ impl OptIn {
     /// Whether the mods run (and their files may be fetched).
     pub fn runs(self) -> bool {
         match self {
-            OptIn::Launcher => true,
+            OptIn::Launcher | OptIn::Offline => true,
             #[cfg(feature = "dev")]
             OptIn::Developer => true,
             OptIn::Off | OptIn::NoOwner(_) => false,
@@ -117,6 +119,8 @@ pub struct Record {
     /// The profile UUID without dashes, lowercase.
     pub uuid: String,
     pub access_token: String,
+    /// True only for a private, one-use offline record written by the launcher.
+    pub offline: bool,
 }
 
 impl std::fmt::Debug for Record {
@@ -166,6 +170,12 @@ pub fn read_record(path: &Path) -> Result<Record, Refused> {
         .ok()
         .and_then(|t| serde_json::from_str(&t).ok())
         .ok_or(Refused::BadRecord)?;
+    if json.get("offline").and_then(serde_json::Value::as_bool) == Some(true) {
+        if !launcher_accounts(path).is_file() {
+            return Err(Refused::BadRecord);
+        }
+        return Ok(Record { uuid: String::new(), access_token: String::new(), offline: true });
+    }
     let field = |k: &str| {
         json.get(k)
             .and_then(serde_json::Value::as_str)
@@ -179,7 +189,7 @@ pub fn read_record(path: &Path) -> Result<Record, Refused> {
     if !launcher_has(&launcher_accounts(path), &uuid) {
         return Err(Refused::NotInLauncher);
     }
-    Ok(Record { uuid, access_token })
+    Ok(Record { uuid, access_token, offline: false })
 }
 
 /// The launcher's `accounts.json` for a record at `path` (`<launcher>/java-mods-owner/<file>`).
@@ -296,6 +306,9 @@ pub fn decide<S: AsRef<str>>(
         Ok(record) => record,
         Err(why) => return OptIn::NoOwner(why),
     };
+    if record.offline {
+        return OptIn::Offline;
+    }
     match services(&record) {
         Services::Owns => OptIn::Launcher,
         Services::DoesNot => OptIn::NoOwner(Refused::NotOwner),
