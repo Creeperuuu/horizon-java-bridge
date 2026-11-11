@@ -150,6 +150,30 @@ fn a_record_must_be_fresh_private_and_the_launchers() {
     assert_eq!(check(&good), (OptIn::NoOwner(Refused::BadRecord), false));
 }
 
+
+/// An offline launch record opts in without any account token or service request.
+#[test]
+fn private_offline_record_runs_fabric_without_account_authentication() {
+    let launcher = Launcher::new("offline-record", &[]);
+    let path = launcher.0.join("java-mods-owner/offline-1.json");
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let mut file = options.open(&path).unwrap();
+    file.write_all(br#"{"offline":true}"#).unwrap();
+    let p = path.to_string_lossy().into_owned();
+    let mut asked = false;
+    let result = decide([ARG], |key| (key == OWNER_VAR).then(|| p.clone()), |_| {
+        asked = true;
+        Services::DoesNot
+    });
+    assert_eq!(result, OptIn::Offline);
+    assert!(result.runs());
+    assert!(!asked, "offline records must never contact the Minecraft services");
+    assert!(!path.exists(), "the one-use offline record is consumed");
+}
+
 #[test]
 fn only_the_services_say_who_owns_the_game() {
     let launcher = Launcher::new("services", &[UUID]);
@@ -236,6 +260,7 @@ fn the_services_check_reads_profile_and_entitlements() {
     let record = Record {
         uuid: UUID.into(),
         access_token: "tok".into(),
+        offline: false,
     };
     let profile = format!(r#"{{"id":"{UUID}","name":"Steve"}}"#);
     let owns = r#"{"items":[{"name":"product_minecraft"},{"name":"game_minecraft"}]}"#.to_string();
