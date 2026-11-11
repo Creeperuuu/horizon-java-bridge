@@ -66,11 +66,35 @@ pub fn java_home() -> Option<PathBuf> {
         .map(|r| r.home)
 }
 
-/// A local Java 25 JDK (including javac); offline setup never downloads Mojang's runtime.
-fn ensure_java(_log: &dyn Fn(&str)) -> Result<PathBuf, String> {
-    java_home().ok_or_else(|| {
-        "Fabric mods need a locally installed Java 25 JDK (including javac). Install a Java 25 JDK before playing offline.".into()
-    })
+/// A local Java 25 JDK (including javac), or Mojang's runtime after a fresh owner check.
+/// Offline play never downloads Java from Mojang.
+fn ensure_java(log: &dyn Fn(&str)) -> Result<PathBuf, String> {
+    if let Some(home) = java_home() {
+        return Ok(home);
+    }
+    let mut accounts = account::Accounts::load();
+    let pass = account::launch(
+        &account::Endpoints::live(),
+        account::client_id().as_deref(),
+        account::store(),
+        &mut accounts,
+    );
+    if let Err(e) = accounts.save() {
+        log(&format!("Horizon: the accounts are not saved: {e}"));
+    }
+    let confirmed = pass.ok().and_then(|pass| pass.owner).is_some();
+    if !confirmed {
+        return Err(if backend::Settings::load().offline_play() {
+            "Fabric mods need a local Java 25 JDK (including javac) for offline play. Install a Java 25 JDK or sign in to download Mojang's runtime.".into()
+        } else {
+            crate::i18n::tr(SIGN_IN_FIRST).to_string()
+        });
+    }
+    let need = java::Need::named(&JAVA_MAJOR.to_string())?;
+    log(crate::i18n::tr("Downloading Java 25 for Fabric mods…"));
+    java::install(&need, &|line| log(&line))
+        .map(|runtime| runtime.home)
+        .map_err(|e| format!("Java {JAVA_MAJOR} for Fabric mods: {e}"))
 }
 
 /// game-build.yml's Java mods builds: (`std::env::consts::OS`, `ARCH`, the asset). None for macOS yet.
