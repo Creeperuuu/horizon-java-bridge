@@ -23,7 +23,7 @@ Horizon plays Minecraft in Rust. The bridge lets it play the **mods people alrea
 
 ## Get it
 
-You need a Microsoft account that owns Minecraft: Java Edition, and Minecraft 26.3 played once in the official launcher. Playing with mods works only through the launcher, after sign-in: there's no offline way, and nothing for the mods is downloaded before you sign in.
+For normal online play and first-time downloads from Mojang, use a Microsoft account that owns Minecraft: Java Edition. **Offline play is supported** when the Minecraft 26.3 game files are already present on this computer: enable offline play in Settings → Developer options (seven clicks on the sidebar's launcher version), enable Fabric mods for the instance, and press Play without signing in. Offline Fabric play also needs a local Java 25 JDK (including `javac`). The launcher can fetch the Fabric-enabled Horizon build from this project's GitHub releases without Microsoft sign-in; it will not fetch missing Minecraft files or a Java runtime from Mojang while offline.
 
 1. **Download the launcher** from the [`java-mods` release](https://github.com/iaxivers/horizon-java-bridge/releases/tag/java-mods): `horizon-launcher-linux-x86_64.tar.gz` or `horizon-launcher-windows-x64.zip`. It never updates itself into the main Horizon launcher.
 2. **Start it, sign in,** install a Horizon version and let it prepare from your Minecraft 26.3.
