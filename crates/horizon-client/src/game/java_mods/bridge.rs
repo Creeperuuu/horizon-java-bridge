@@ -518,7 +518,7 @@ fn start_once(root: &Path, dir: &Path, jars: Vec<PathBuf>, side: horizon_jvm::Si
         fabric,
         class_archive: archive.clone(),
     };
-    // The game downloads no Java: the launcher fetches the version's own, after its sign-in.
+    // The game downloads no Java: the launcher supplies a local Java 25 JDK.
     let bridge = match horizon_jvm::find_java_home()
         .map_err(|e| {
             format!(
