@@ -25,10 +25,10 @@ Horizon plays Minecraft in Rust. The bridge lets it play the **mods people alrea
 
 For normal online play and first-time downloads from Mojang, use a Microsoft account that owns Minecraft: Java Edition. **Offline play is supported** when the Minecraft 26.3 game files are already present on this computer: enable offline play in Settings → Developer options (seven clicks on the sidebar's launcher version), enable Fabric mods for the instance, and press Play without signing in. Offline Fabric play also needs a local Java 25 JDK (including `javac`). The launcher can fetch the Fabric-enabled Horizon build from this project's GitHub releases without Microsoft sign-in; it will not fetch missing Minecraft files or a Java runtime from Mojang while offline.
 
-1. **Download the launcher** from the [`java-mods` release](https://github.com/iaxivers/horizon-java-bridge/releases/tag/java-mods): `horizon-launcher-linux-x86_64.tar.gz` or `horizon-launcher-windows-x64.zip`. It never updates itself into the main Horizon launcher.
-2. **Start it, sign in,** install a Horizon version and let it prepare from your Minecraft 26.3.
-3. **Turn on "Fabric mods"** on Home, next to **Play** (also in Play's **⋯** menu). The launcher downloads the Fabric mods build of the game (signed, checked like the game itself) and Java 25 if you have none.
-4. **Add Fabric 26.3 jars** in the **Java mods** tab and press **Play**. The first start with new mods takes a few minutes.
+1. **Build the offline-capable binaries:** open [Actions → Offline Fabric mods build](https://github.com/Creeperuuu/horizon-java-bridge/actions/workflows/offline-fabric-build.yml), run it on the `offline-play` branch, then download the Linux or Windows artifact. It contains the launcher and Fabric-enabled game binary.
+2. **Start the launcher** from that artifact. Install a Horizon version and prepare it from your already-installed Minecraft 26.3 files. Do not choose a Mojang download while offline.
+3. **Register the built game binary** with `horizon-launcher java-mods use-build <path-to-horizon-client>` (use `horizon-client.exe` on Windows). Enable offline play in Settings → Developer options, then turn on "Fabric mods" for the instance.
+4. **Install a local Java 25 JDK** (including `javac`), add Fabric 26.3 jars in the **Java mods** tab, and press **Play**. Fabric's own libraries may be downloaded from Fabric's public servers; no Microsoft sign-in is needed for this offline launch.
 
 Found a bug? Post it with a screenshot or video, your mod list and `logs/latest.log` (in your game folder). The [testers' guide](docs/java-bridge-beta.md) has every step.
 
@@ -63,7 +63,7 @@ Of the 60 most-downloaded Fabric 26.3 mods, **39 work**, 4 renderer replacements
 | Mods that change vanilla behaviour (mixins) | ✅ Veinminer, Right Click Harvest, Carry On, Serene Seasons, Clumps |
 | Player look | ✅ 3D Skin Layers |
 | Multiplayer with mods | ✅ LAN and dedicated servers: each player's own maps, recipe viewers and mod settings |
-| The launcher | ✅ the only way to play: a **Fabric 26.3 mods (beta)** switch per instance and a **Java mods** tab (add, remove, which mods failed last game); fetches Java 25 after the Microsoft sign-in |
+| The launcher | ✅ a **Fabric 26.3 mods (beta)** switch per instance and a **Java mods** tab; offline launches use a local Java 25 JDK and pre-existing Minecraft files |
 | Renderer replacements (Sodium, Iris) | ➖ not needed: Horizon has its own renderer, so they have nothing to replace |
 | Known not working yet | 🐛 Flashback's recording, Chat Heads' heads, Litematica's overlay in the world; on LAN, the host's own REI list (each player running their mods' client, `HORIZON_JAVA_OWN_CLIENT=1`, is still opt-in). TACZ's guns fire and draw, still rough. Testers track mods on [their Trello](https://trello.com/b/2uhi4jkj) |
 | Windows | ✅ builds and plays on Windows 11 (Windows support by [martipops](https://github.com/martipops)); macOS untested |
