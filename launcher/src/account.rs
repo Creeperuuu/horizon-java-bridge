@@ -1866,15 +1866,54 @@ static LAST_OWNER: Mutex<Option<(Account, Secrets, Instant)>> = Mutex::new(None)
 /// How recent that answer must be for the game being started now.
 const OWNER_ANSWER_LIFE: Duration = Duration::from_secs(300);
 
-/// Fabric 26.3 mods' owner record (`horizon_jvm::gate`, docs/java-bridge.md "Ownership"): the
-/// session file of the account the owner gate heard own the game just now (its UUID and
-/// Minecraft token), in `<launcher>/java-mods-owner/`, for the game being started. The game reads
-/// it once, deletes it, checks the account is in `accounts.json` and asks the Minecraft services
-/// with the token itself. None when no owner answered in the last minutes (offline): Fabric mods
-/// then don't start.
+/// Fabric 26.3 mods' online owner record. The game reads it once, deletes it, checks the account
+/// is in `accounts.json` and asks the Minecraft services with its token.
 pub fn write_owner_record() -> Result<PathBuf, String> {
     let last = LAST_OWNER.lock().ok().and_then(|last| last.clone());
     owner_record(last, &owner_record_dir())
+}
+
+/// Record for a Fabric-mods launch. If a recently confirmed owner exists, retain the online
+/// ownership proof. Otherwise, the existing offline-play setting permits a local offline record.
+/// This never downloads Minecraft files or authenticates a multiplayer server.
+pub fn write_mods_record(offline_without_owner: bool) -> Result<PathBuf, String> {
+    let last = LAST_OWNER.lock().ok().and_then(|last| last.clone());
+    if last.as_ref().is_some_and(|(_, _, at)| at.elapsed() <= OWNER_ANSWER_LIFE) {
+        return owner_record(last, &owner_record_dir());
+    }
+    if offline_without_owner {
+        return offline_owner_record(&owner_record_dir());
+    }
+    owner_record(last, &owner_record_dir())
+}
+
+/// Writes a short-lived, private offline marker consumed once by the game. It contains no
+/// account token and is accepted only for this local offline launch.
+fn offline_owner_record(dir: &Path) -> Result<PathBuf, String> {
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
+            .map_err(|e| e.to_string())?;
+    }
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let old = entry.metadata().and_then(|m| m.modified())
+                .is_ok_and(|m| m.elapsed().is_ok_and(|age| age > OWNER_RECORD_LIFE));
+            if old { let _ = std::fs::remove_file(entry.path()); }
+        }
+    }
+    let mut nonce = [0u8; 12];
+    getrandom::fill(&mut nonce).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("offline-{}.json", nonce.iter().map(|b| format!("{b:02x}")).collect::<String>()));
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let mut file = options.open(&path).map_err(|e| e.to_string())?;
+    std::io::Write::write_all(&mut file, br#"{"offline":true}"#).map_err(|e| e.to_string())?;
+    Ok(path)
 }
 
 /// [`write_owner_record`] from the owner gate's `last` answer, in `dir`.
