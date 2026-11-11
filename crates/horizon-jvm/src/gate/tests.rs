@@ -155,6 +155,8 @@ fn a_record_must_be_fresh_private_and_the_launchers() {
 #[test]
 fn private_offline_record_runs_fabric_without_account_authentication() {
     let launcher = Launcher::new("offline-record", &[]);
+    // First-time offline users have no account database at all.
+    std::fs::remove_file(launcher.0.join("accounts.json")).unwrap();
     let path = launcher.0.join("java-mods-owner/offline-1.json");
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true);

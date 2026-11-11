@@ -1,4 +1,4 @@
-//! Who may run Fabric mods in this game (docs/java-bridge.md, "Ownership").
+//! Whether this launcher-started game may run Fabric mods (docs/java-bridge.md, "Ownership").
 //!
 //! Fabric mods run on the player's own game jar, and their first start downloads Fabric Loader,
 //! its libraries and Fabric API from Fabric's servers. That happens only when **the launcher
@@ -13,10 +13,8 @@
 //! - the game reads the record once and deletes it ([`read_record`]): it must be fresh (written
 //!   in the last [`RECORD_LIFE`]), the player's only, and name an account of the launcher's
 //!   `accounts.json` beside its folder;
-//! - then the game asks the Minecraft services with that token, as the launcher does: the profile
-//!   must be the record's UUID and the entitlements must hold Minecraft: Java Edition
-//!   ([`services_check`]). Only a token Mojang issued to an owner passes; no file or variable
-//!   written by hand does, and offline (no answer) runs no mods either.
+//! - for an offline record, the game skips Microsoft ownership checks entirely. It does not grant
+//!   an online identity and cannot authenticate to online-mode multiplayer servers.
 //!
 //! [`ARG`] without a record that passes (the game started by hand, by another launcher, or with
 //! the variables set by hand) runs no mods: the game says the launcher is needed and plays without
@@ -34,7 +32,7 @@ use std::time::{Duration, SystemTime};
 
 /// The game argument the launcher passes for an instance whose Fabric switch is on.
 pub const ARG: &str = "--java-mods";
-/// The owner record's path, set by the launcher beside [`ARG`] past its owner gate.
+/// The one-use launch record's path, set by the launcher beside [`ARG`].
 pub const OWNER_VAR: &str = "HORIZON_JAVA_MODS_OWNER";
 /// A developer's explicit opt-in (`=1`): the bridge's harnesses and test servers. Only in builds
 /// with the `dev` feature.
@@ -171,9 +169,9 @@ pub fn read_record(path: &Path) -> Result<Record, Refused> {
         .and_then(|t| serde_json::from_str(&t).ok())
         .ok_or(Refused::BadRecord)?;
     if json.get("offline").and_then(serde_json::Value::as_bool) == Some(true) {
-        if !launcher_accounts(path).is_file() {
-            return Err(Refused::BadRecord);
-        }
+        // An offline player has no accounts.json yet. The private, one-use marker itself is the
+        // launcher's proof for this local session; do not make an empty account database a
+        // prerequisite for first-time account-free play.
         return Ok(Record { uuid: String::new(), access_token: String::new(), offline: true });
     }
     let field = |k: &str| {

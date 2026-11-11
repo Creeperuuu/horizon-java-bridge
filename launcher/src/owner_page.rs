@@ -14,12 +14,13 @@ impl Launcher {
             && self.opening.is_none()
     }
 
-    /// `owner` as the window shows it: offline play (on unless Settings > Developer options turns
-    /// it off) hides the gate, as if the keychain hadn't answered yet, except
-    /// for an instance with Fabric 26.3 mods on, which plays only for a signed-in owner.
+    /// `owner` as the window shows it. Offline play hides the Microsoft owner gate for
+    /// every Horizon instance, including instances with Fabric mods enabled. Fabric's offline
+    /// launch record is checked separately by the Java bridge; online-mode servers still require
+    /// a real Microsoft account.
     pub(crate) fn owner_shown(&self) -> Option<bool> {
         match self.owner {
-            Some(false) if self.settings.offline_play() && !self.has_java_mods_tab() => None,
+            Some(false) if self.settings.offline_play() => None,
             owner => owner,
         }
     }

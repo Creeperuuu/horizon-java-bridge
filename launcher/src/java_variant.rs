@@ -85,7 +85,7 @@ fn ensure_java(log: &dyn Fn(&str)) -> Result<PathBuf, String> {
     let confirmed = pass.ok().and_then(|pass| pass.owner).is_some();
     if !confirmed {
         return Err(if backend::Settings::load().offline_play() {
-            "Fabric mods need a local Java 25 JDK (including javac) for offline play. Install a Java 25 JDK or sign in to download Mojang's runtime.".into()
+            "Offline Fabric play needs a local Java 25 JDK (including javac). Install Eclipse Temurin 25 or another Java 25 JDK; no Microsoft sign-in is needed.".into()
         } else {
             crate::i18n::tr(SIGN_IN_FIRST).to_string()
         });

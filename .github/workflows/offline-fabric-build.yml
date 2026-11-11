@@ -2,12 +2,18 @@ name: Offline Fabric mods build
 # Compile the offline-capable game and launcher on demand. No Minecraft account or Mojang
 # credentials are used by this build; it packages binaries only, not game files or mods.
 on:
+  push:
+    branches: [offline-play]
+    paths:
+      - 'launcher/**'
+      - 'crates/**'
+      - '.github/workflows/offline-fabric-build.yml'
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: offline-fabric-build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build:
     name: ${{ matrix.name }}
