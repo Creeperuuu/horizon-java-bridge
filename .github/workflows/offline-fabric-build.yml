@@ -52,7 +52,7 @@ jobs:
         run: |
           cargo test --release --locked -p horizon-jvm --lib
           cd launcher
-          cargo test --release --locked --lib -- java_release java_variant
+          cargo test --release --locked --lib
       - name: Build game with Fabric bridge
         run: |
           cargo build --release --locked -p horizon-client --features java-mods --bin horizon-client
