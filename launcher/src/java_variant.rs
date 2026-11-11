@@ -8,7 +8,7 @@
 //! Nothing for the mods is downloaded before the owner gate: the build and Mojang's Java for the
 //! version (`java-runtime-epsilon`) come only for a signed-in account that owns Minecraft: Java
 //! Edition ([`owner_signed_in`]), and Play with the switch on never takes the developer option's
-//! way past the gate (`dev_offline`). The game itself downloads no Java.
+//! way past the gate (offline play, `Settings::offline_play`). The game itself downloads no Java.
 use crate::backend::{self, Release, CLIENT};
 use crate::{account, java};
 use std::fs;

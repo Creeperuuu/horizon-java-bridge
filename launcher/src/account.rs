@@ -1623,7 +1623,7 @@ impl Accounts {
     }
 
     /// [`Self::play_as`], where `offline_without_owner` (the window's hidden developer option,
-    /// `backend::Settings::dev_offline`) lets an offline name play without an account that owns
+    /// `backend::Settings::offline_play`, on by default) lets an offline name play without an account that owns
     /// the game.
     pub fn play_as_with(
         &mut self,
@@ -1902,7 +1902,7 @@ pub const OWNER_NOT_CONFIRMED: &str = "Fabric 26.3 mods need the Minecraft servi
      the internet and press Play again, or turn Fabric 26.3 mods off to play offline.";
 
 /// The owner gate before the game starts. With the window's hidden developer option
-/// (`backend::Settings::dev_offline`, `offline_without_owner`) no owner is no refusal: the game
+/// (`backend::Settings::offline_play`, `offline_without_owner`) no owner is no refusal: the game
 /// starts offline, without a session and without an `owner`. Downloads never come through here:
 /// `backend::download_for_owner` asks [`launch`] itself, so the option never downloads the game.
 pub fn launch_for_game(
@@ -2409,18 +2409,37 @@ fn account_sessions_until(
 /// ([`launch`]): the selected account when it owns the game, else one that does. With no answer
 /// from the services, an account that owned it plays with its last token. Mojang's game takes the
 /// token on its command line, as Mojang's launcher gives it; that command is never logged.
-pub fn java_player() -> Result<crate::java_launch::Player, String> {
+///
+/// With `offline_ok` (offline play, on by default) a player without an account that owns the game
+/// plays offline instead: the selected offline name (else `Player`), its offline UUID and no token.
+/// That only starts a game already downloaded; the downloads still need an owner.
+pub fn java_player(offline_ok: bool) -> Result<crate::java_launch::Player, String> {
     let mut accounts = Accounts::load();
-    let player = java_player_with(
+    let mut player = java_player_with(
         &Endpoints::live(),
         client_id().as_deref(),
         store(),
         &mut accounts,
     );
+    if offline_ok && player.as_ref().err().is_some_and(|e| *e == NoOwner.to_string()) {
+        player = Ok(offline_java_player(&accounts));
+    }
     if let Err(e) = accounts.save() {
         eprintln!("Horizon: the accounts are not saved: {e}");
     }
     player
+}
+
+/// The offline player: the offline name picked (else `Player`), with the UUID Mojang's own
+/// offline mode makes for it, and no token.
+fn offline_java_player(accounts: &Accounts) -> crate::java_launch::Player {
+    let name = accounts.offline_selected.clone().unwrap_or_else(|| "Player".into());
+    crate::java_launch::Player {
+        uuid: format!("{:032x}", horizon_protocol::crypto::offline_uuid(&name)),
+        name,
+        token: "0".into(),
+        xuid: String::new(),
+    }
 }
 
 fn java_player_with(

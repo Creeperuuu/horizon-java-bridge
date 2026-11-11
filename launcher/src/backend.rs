@@ -2009,7 +2009,8 @@ pub fn java_game(
             instance.name
         )
     })?;
-    let player = account::java_player()?;
+    // Playing offline is allowed without an account; the download below still needs one.
+    let player = account::java_player(Settings::load().offline_play())?;
     let minecraft = data_dir().join("minecraft");
     let id = mojang::relative(&game.minecraft)?;
     let natives = minecraft.join("natives").join(&id);
@@ -2965,7 +2966,8 @@ pub fn client_as(tag: &str, who: Option<&account::Player>) -> Result<Command, St
         return Err(error);
     }
     let session = match who {
-        None => account::session_for_game(&game_home(), false).map_err(|e| e.to_string()),
+        None => account::session_for_game(&game_home(), Settings::load().offline_play())
+            .map_err(|e| e.to_string()),
         Some(who) => account::session_for_game_as(&game_home(), who),
     }
     .map_err(|refused| format!("{refused} {}", crate::i18n::tr(SIGN_IN_HINT)))?;
@@ -4224,15 +4226,22 @@ pub struct Settings {
     /// An older file's switch for the release profile, read when `native_profile` is unset.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub native_release: bool,
-    /// Developer options (hidden: seven clicks on the sidebar's launcher version reveal them):
-    /// offline names play without an account that owns the game, in the window only
-    /// (`account::Accounts::play_as_with`, `account::launch_for_game`). Never a download: the game still
-    /// comes from the player's own install. Off by default, and absent from the file while off.
+    /// Offline play is on by default: an offline name plays without signing in to Microsoft
+    /// (`account::Accounts::play_as_with`, `account::launch_for_game`). Never a download: Mojang's
+    /// files (client, libraries, assets, Java) still come only for an account the services say
+    /// owns the game (`download_for_owner`). This switch (Settings > Developer options, seven
+    /// clicks on the sidebar's launcher version) turns the old rule back on: Play needs an owner.
+    /// Absent from the file while off.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub dev_offline: bool,
+    pub require_account: bool,
 }
 
 impl Settings {
+    /// Whether the game starts without a Microsoft account that owns it (offline names). Never
+    /// lets the launcher download Mojang's files.
+    pub fn offline_play(&self) -> bool {
+        !self.require_account
+    }
     pub fn load() -> Self {
         Self::parse(&fs::read_to_string(data_dir().join("settings.json")).unwrap_or_default())
     }
@@ -4495,7 +4504,7 @@ mod tests {
 
     /// The launcher downloads Mojang's game files (client jar, libraries, assets) only for an
     /// account the services said owns the game: never without one, and never past the gate by
-    /// the developer option (`Settings::dev_offline`), whose pass has no owner.
+    /// offline play (`Settings::offline_play`), whose pass has no owner.
     #[test]
     fn mojang_downloads_only_for_an_owner() {
         let dir = std::env::temp_dir().join(format!("horizon-owner-only-{}", std::process::id()));

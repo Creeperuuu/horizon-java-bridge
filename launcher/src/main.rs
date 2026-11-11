@@ -1186,8 +1186,8 @@ impl Launcher {
                                 continue;
                             }
                         };
-                        // Past the gate by the developer option alone is no owner.
-                        if !self.settings.dev_offline {
+                        // Past the gate by offline play alone is no owner.
+                        if file.is_some() || !self.settings.offline_play() {
                             self.owner = Some(true);
                         }
                         if let Some(file) = file {
@@ -1825,8 +1825,8 @@ impl Launcher {
         self.play_pressed = Some(Instant::now());
         let tx = self.tx.clone();
         let java_build = self.java_build_at_play();
-        // Fabric mods play only for a signed-in owner: never the developer option's offline pass.
-        let offline_without_owner = self.settings.dev_offline && !java_build;
+        // Fabric mods play only for a signed-in owner: never the offline pass.
+        let offline_without_owner = self.settings.offline_play() && !java_build;
         std::thread::spawn(move || {
             if let Err(e) = java_mods_page::ensure_at_play(java_build, &tag, &tx) {
                 let _ = tx.send(Msg::JavaPlayStopped(e));

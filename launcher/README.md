@@ -580,3 +580,10 @@ bundled so the type is the same on every platform.
 ![Versions](docs/versions.png)
 ![Patch notes](docs/patch-notes.png)
 ![Settings](docs/settings.png)
+
+## Offline play
+
+Offline names play without signing in to Microsoft (the game must already be on this computer).
+Downloading anything from Mojang (the game, its libraries and assets, Java) still needs a Microsoft
+account that owns Minecraft: Java Edition. Settings > Developer options (seven clicks on the
+sidebar's launcher version) has "Require a Microsoft account to play" to turn offline play off.

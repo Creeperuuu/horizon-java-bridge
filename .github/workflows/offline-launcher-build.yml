@@ -1,0 +1,86 @@
+name: offline-launcher-build
+# Builds the launcher (offline play allowed without a Microsoft login; downloading Minecraft from
+# Mojang still needs an account that owns the game) for Linux, Windows and macOS, and uploads each
+# binary as a workflow artifact. Nothing is released or published.
+#   gh workflow run offline-launcher-build --ref <branch>
+
+on:
+  push:
+    branches: [main, offline-play]
+    paths:
+      - 'launcher/**'
+      - 'crates/**'
+      - '.github/workflows/offline-launcher-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-launcher-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HORIZON_TELEMETRY_URL: "off"
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-22.04
+            binary: horizon-launcher
+          - name: windows-x86_64
+            os: windows-latest
+            binary: horizon-launcher.exe
+            rustflags: -C target-feature=+crt-static
+          - name: macos-arm64
+            os: macos-14
+            binary: horizon-launcher
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      RUSTFLAGS: ${{ matrix.rustflags }}
+      # Horizon's Azure app for Microsoft sign-in (docs/microsoft-account.md), a repository variable.
+      # Unset, the launcher says sign-in is not configured, and Mojang downloads cannot be unlocked.
+      HORIZON_MSA_CLIENT_ID: ${{ vars.HORIZON_MSA_CLIENT_ID }}
+      HORIZON_CURSEFORGE_API_KEY: ${{ secrets.HORIZON_CURSEFORGE_API_KEY }}
+    defaults:
+      run:
+        working-directory: launcher
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: launcher
+          shared-key: offline-launcher-${{ matrix.name }}
+      - name: Linux libraries GPUI links to
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libfontconfig-dev libvulkan-dev libasound2-dev patchelf
+      - name: Metal shaders at run time without the Metal toolchain
+        if: runner.os == 'macOS'
+        run: |
+          if ! xcrun metal --version > /dev/null 2>&1; then
+            echo "LAUNCHER_FEATURES=gpui_platform/runtime_shaders" >> "$GITHUB_ENV"
+          fi
+      - name: Build
+        run: cargo build --release --locked ${LAUNCHER_FEATURES:+--features "$LAUNCHER_FEATURES"}
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp "target/release/${{ matrix.binary }}" out/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: horizon-launcher-${{ matrix.name }}
+          path: launcher/out/*
+          if-no-files-found: error
+          retention-days: 30
