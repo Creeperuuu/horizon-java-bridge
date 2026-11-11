@@ -3162,47 +3162,27 @@ The maintainers' conditions, and what holds them:
   against the jars it fetches into the checkout's `.local/bridge/lib`, on the developer's machine.
   The release build is **Fabric only**: the NeoForge and 1.12 prototypes are behind
   `java-mods-prototypes`, which no release enables.
-- **(b) Nothing plays without owning the game, nothing of Mojang's is downloaded for a non-owner.**
-  The game downloads nothing of Mojang's, ever (no Java, jars or assets: the game jar is the player's
-  own preparation). Fabric mods run only when `horizon_jvm::gate` says so, and environment variables
-  alone never make it say so:
-  1. **The launcher's owner gate** (`account::launch`, the same check plain Play and
-     `download_for_owner` use) asks the Minecraft services with each account's token whether it
-     owns Minecraft: Java Edition; the last "yes" is kept in memory with its time
-     (`account::LAST_OWNER`).
-  2. **The owner record:** with the switch on, `java_variant::switch_command` writes, from a "yes"
-     at most 5 minutes old, the owner's session file (`account::write_owner_record`: profile UUID
-     and Minecraft access token, 0600, random name, the same writer and reaper as
-     `--session-file`) in `<launcher home>/java-mods-owner/`, and passes its path in
-     `HORIZON_JAVA_MODS_OWNER` beside `--java-mods`. No fresh "yes" (offline): Play refuses ("need
-     the Minecraft services to confirm …; turn Fabric 26.3 mods off to play offline").
-  3. **The game checks it itself** (`gate::decision`, on a thread from the process's first line,
-     `entry.rs`): the record is a regular file, its owner's only, written in the last 10 minutes
-     (`RECORD_LIFE`: a pre-launch command or wrapper may run in between; the launcher's reaper
-     keeps it as long); read once and deleted; its UUID is an
-     account of the launcher's `accounts.json` beside the record's folder; then the game calls
-     `GET /minecraft/profile` (must be that UUID) and `GET /entitlements/mcstore` (must hold
-     `game_minecraft`/`product_minecraft`) on api.minecraftservices.com with the token, as the
-     launcher's `owns_game` does. Only a token Mojang issued to an owner passes. 401/403/404 is a
-     "no"; 429, 5xx and network errors are "no answer". The launcher passes its proxy setting
-     (`proxy::spec_for`) as `HTTPS_PROXY` to the game, which the check and Fabric's downloads use.
-  Why not read the launcher's stored proof (`Secrets.owns`) directly: it lives in the OS keychain
-  (Secret Service, Keychain, Credential Manager), which the game can't read without a keychain
-  stack of its own, and any local file or variable a player can write as well. The token is the
-  one proof the game can check without new crypto. **Trade-off:** Fabric mods need the services
-  reachable at each start (plain Horizon still plays offline). Anything else runs no mods and
-  fetches nothing, and says why in the log/stderr: "Fabric 26.3 mods run only when Horizon's
-  launcher starts the game … (no owner record from the launcher | the owner record is missing,
-  too old or readable by others | … not signed in to the launcher | the Minecraft services did not
-  confirm … | … could not be reached …)". With jars in `mods-java/` the game then **stops**
-  (`not_started`, exit 78, "Java mods: not started: …", which the launcher's Java mods tab shows):
-  a modded world opened without its mods would lose their blocks and items. With no jars it plays. The launcher
-  fetches the Java mods build and Mojang's Java 25 only past `owner_signed_in` (`ensure`, `follow`,
-  `update`, `java-mods on`). A determined user can still patch a binary; these checks keep Horizon
-  from offering a path.
-  **Developers:** `HORIZON_JAVA_MODS=1` (regress, `launch.sh`, `lan_test.sh`, `server_test.sh`,
-  `lan_e2e --java-mods`) and `HORIZON_JAVA_MODS_SERVICES=<url>` (a stand-in services, `install_test.sh`'s
-  `tools/java_bridge/fake_services.py`) exist only in `java-mods-dev` builds.
+- **(b) Offline local installs may run Fabric mods without Microsoft sign-in.** The launcher has two
+  launch-record paths, selected by the offline-play setting:
+  1. **Online owner record:** when `account::launch` freshly confirms an account owns Minecraft:
+     Java Edition, `java_variant::switch_command` writes the account UUID and Minecraft token to a
+     private, one-use record under `<launcher home>/java-mods-owner/`. The game checks the profile
+     and Java Edition entitlement with api.minecraftservices.com before starting Fabric.
+  2. **Offline record:** when offline play is enabled and no fresh owner proof was obtained,
+     `account::write_mods_record` writes a private, one-use marker with no UUID or token. The game
+     consumes it and starts Fabric without contacting Microsoft. The marker is short-lived, stored
+     beside the launcher's `accounts.json`, and is deleted when read. It does not grant an online
+     identity or authenticate to online-mode multiplayer servers.
+  3. **Local files are still required:** offline play never downloads Minecraft's game jar,
+     libraries, assets or Java runtime from Mojang. Those must already be available locally.
+     Fabric's own libraries and Fabric API may be fetched from their public distribution servers,
+     and the Fabric-enabled Horizon build is fetched from the project's GitHub release.
+     Offline Fabric play requires a local Java 25 JDK (including `javac`). If the Minecraft files
+     are missing, the normal Mojang download path still requires an account that owns the game.
+  A missing, stale or invalid record still refuses Fabric startup; if `mods-java/` contains jars,
+  the game stops rather than opening a modded world without its mods (exit 78). With no jars, it
+  plays plain Horizon. A local user can modify their own binaries; these checks define the
+  launcher's supported paths, not DRM.
 - **(c)** Startup and frame time with the bridge off: [java-bridge-perf.md](java-bridge-perf.md),
   "The bridge switched off" (`tools/java_bridge/perf_off.sh`).
 - **(d) A warning first:** turning "Fabric 26.3 mods (beta)" on in the window (Home's chip, Play's
