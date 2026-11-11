@@ -138,8 +138,8 @@ impl Launcher {
         if !java_variant::available() {
             return Some(tr("No build for this platform"));
         }
-        if self.owner != Some(true) {
-            return Some(tr("Sign in with a Minecraft account first."));
+        if self.owner != Some(true) && !self.settings.offline_play() {
+            return Some(tr("Sign in with a Minecraft account first, or enable offline play."));
         }
         None
     }
@@ -218,9 +218,9 @@ impl Launcher {
                 cx.notify();
             }));
         let about = text(theme::CAPTION).text_color(t.muted).child(tr(
-            "Runs the Fabric mods in this instance's mods-java folder. Off, the game never starts \
-             Java. On, once you're signed in with an account that owns Minecraft, the launcher \
-             downloads Horizon's build with Java mods, and Java 25 if you have none.",
+            "Runs the Fabric mods in this instance's mods-java folder. Offline play needs the \
+             local Minecraft 26.3 files and a Java 25 JDK; missing Minecraft files still require \
+             a signed-in account to download.",
         ));
         let state = self.java_mods.build.as_ref().map(|b| match &b.done {
             None => text(theme::CAPTION)
