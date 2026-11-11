@@ -1,5 +1,6 @@
 name: Offline Fabric mods build
-# Compile the offline-capable game and launcher on demand. No Minecraft account or Mojang
+# Compile the offline-capable game and launcher on demand, and validate the offline session path.
+# No Minecraft account or Mojang
 # credentials are used by this build; it packages binaries only, not game files or mods.
 on:
   push:
