@@ -1,14 +1,9 @@
-//! The launcher's languages: English (the strings in the code), French, Russian, German and
-//! Spanish, the languages Horizon's own game menus have, Simplified Chinese, Ukrainian,
-//! Polish, Brazilian Portuguese, Japanese, Turkish, Korean and Croatian. A table per language (`launcher/lang/<code>.json`) maps each English string to its
-//! translation; a string the table lacks shows in English.
+//! The launcher currently supports English only. Other language codes fall back to English,
+//! including legacy language settings saved by earlier versions.
 //!
-//! The language follows the system's unless the player picks one in Settings
-//! (`Settings::language`). Translations are Horizon's own, written for this launcher.
+//! All launcher strings are written directly in English.
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::OnceLock;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
@@ -190,95 +185,7 @@ pub enum Language {
 }
 
 impl Language {
-    pub const ALL: [Language; 87] = [
-        Self::English,
-        Self::French,
-        Self::Russian,
-        Self::German,
-        Self::Chinese,
-        Self::Spanish,
-        Self::Ukrainian,
-        Self::Polish,
-        Self::PortugueseBrazil,
-        Self::Japanese,
-        Self::Turkish,
-        Self::Korean,
-        Self::Croatian,
-        Self::Arabic,
-        Self::Hindi,
-        Self::Indonesian,
-        Self::Portuguese,
-        Self::Hebrew,
-        Self::Hungarian,
-        Self::Romanian,
-        Self::Danish,
-        Self::Finnish,
-        Self::Norwegian,
-        Self::Bulgarian,
-        Self::Slovak,
-        Self::Lithuanian,
-        Self::Italian,
-        Self::Dutch,
-        Self::Vietnamese,
-        Self::Thai,
-        Self::Urdu,
-        Self::Czech,
-        Self::Swedish,
-        Self::Greek,
-        Self::Persian,
-        Self::Catalan,
-        Self::Estonian,
-        Self::Latvian,
-        Self::Slovenian,
-        Self::Serbian,
-        Self::Icelandic,
-        Self::Afrikaans,
-        Self::Malay,
-        Self::Belarusian,
-        Self::Azerbaijani,
-        Self::Uzbek,
-        Self::Kazakh,
-        Self::Georgian,
-        Self::Armenian,
-        Self::Bosnian,
-        Self::Macedonian,
-        Self::Albanian,
-        Self::Welsh,
-        Self::Irish,
-        Self::Basque,
-        Self::Galician,
-        Self::Filipino,
-        Self::Tamil,
-        Self::Mongolian,
-        Self::Lao,
-        Self::Somali,
-        Self::Frisian,
-        Self::ScottishGaelic,
-        Self::Luxembourgish,
-        Self::Kyrgyz,
-        Self::Kannada,
-        Self::Maltese,
-        Self::Esperanto,
-        Self::Hawaiian,
-        Self::Igbo,
-        Self::Latin,
-        Self::Tatar,
-        Self::Yiddish,
-        Self::Yoruba,
-        Self::Zulu,
-        Self::Bashkir,
-        Self::Breton,
-        Self::Chuvash,
-        Self::Faroese,
-        Self::Friulian,
-        Self::Limburgish,
-        Self::Lombard,
-        Self::Occitan,
-        Self::Sakha,
-        Self::NorthernSami,
-        Self::Silesian,
-        Self::Venetian,
-    ];
+    pub const ALL: [Language; 1] = [Self::English];
 
     /// Its code in `settings.json` and on the command line.
     pub fn code(self) -> &'static str {
@@ -508,98 +415,7 @@ impl Language {
         Self::pick(locales.iter().map(String::as_str))
     }
 
-    /// The table, as shipped: English text to this language's.
-    fn source(self) -> &'static str {
-        match self {
-            Self::English => "{}",
-            Self::French => include_str!("../lang/fr.json"),
-            Self::Russian => include_str!("../lang/ru.json"),
-            Self::German => include_str!("../lang/de.json"),
-            Self::Chinese => include_str!("../lang/zh.json"),
-            Self::Spanish => include_str!("../lang/es.json"),
-            Self::Ukrainian => include_str!("../lang/uk.json"),
-            Self::Polish => include_str!("../lang/pl.json"),
-            Self::PortugueseBrazil => include_str!("../lang/pt-br.json"),
-            Self::Japanese => include_str!("../lang/ja.json"),
-            Self::Turkish => include_str!("../lang/tr.json"),
-            Self::Korean => include_str!("../lang/ko.json"),
-            Self::Croatian => include_str!("../lang/hr.json"),
-            Self::Arabic => include_str!("../lang/ar.json"),
-            Self::Hindi => include_str!("../lang/hi.json"),
-            Self::Indonesian => include_str!("../lang/id.json"),
-            Self::Portuguese => include_str!("../lang/pt.json"),
-            Self::Hebrew => include_str!("../lang/he.json"),
-            Self::Hungarian => include_str!("../lang/hu.json"),
-            Self::Romanian => include_str!("../lang/ro.json"),
-            Self::Danish => include_str!("../lang/da.json"),
-            Self::Finnish => include_str!("../lang/fi.json"),
-            Self::Norwegian => include_str!("../lang/no.json"),
-            Self::Bulgarian => include_str!("../lang/bg.json"),
-            Self::Slovak => include_str!("../lang/sk.json"),
-            Self::Lithuanian => include_str!("../lang/lt.json"),
-            Self::Italian => include_str!("../lang/it.json"),
-            Self::Dutch => include_str!("../lang/nl.json"),
-            Self::Vietnamese => include_str!("../lang/vi.json"),
-            Self::Thai => include_str!("../lang/th.json"),
-            Self::Urdu => include_str!("../lang/ur.json"),
-            Self::Czech => include_str!("../lang/cs.json"),
-            Self::Swedish => include_str!("../lang/sv.json"),
-            Self::Greek => include_str!("../lang/el.json"),
-            Self::Persian => include_str!("../lang/fa.json"),
-            Self::Catalan => include_str!("../lang/ca.json"),
-            Self::Estonian => include_str!("../lang/et.json"),
-            Self::Latvian => include_str!("../lang/lv.json"),
-            Self::Slovenian => include_str!("../lang/sl.json"),
-            Self::Serbian => include_str!("../lang/sr.json"),
-            Self::Icelandic => include_str!("../lang/is.json"),
-            Self::Afrikaans => include_str!("../lang/af.json"),
-            Self::Malay => include_str!("../lang/ms.json"),
-            Self::Belarusian => include_str!("../lang/be.json"),
-            Self::Azerbaijani => include_str!("../lang/az.json"),
-            Self::Uzbek => include_str!("../lang/uz.json"),
-            Self::Kazakh => include_str!("../lang/kk.json"),
-            Self::Georgian => include_str!("../lang/ka.json"),
-            Self::Armenian => include_str!("../lang/hy.json"),
-            Self::Bosnian => include_str!("../lang/bs.json"),
-            Self::Macedonian => include_str!("../lang/mk.json"),
-            Self::Albanian => include_str!("../lang/sq.json"),
-            Self::Welsh => include_str!("../lang/cy.json"),
-            Self::Irish => include_str!("../lang/ga.json"),
-            Self::Basque => include_str!("../lang/eu.json"),
-            Self::Galician => include_str!("../lang/gl.json"),
-            Self::Filipino => include_str!("../lang/fil.json"),
-            Self::Tamil => include_str!("../lang/ta.json"),
-            Self::Mongolian => include_str!("../lang/mn.json"),
-            Self::Lao => include_str!("../lang/lo.json"),
-            Self::Somali => include_str!("../lang/so.json"),
-            Self::Frisian => include_str!("../lang/fy.json"),
-            Self::ScottishGaelic => include_str!("../lang/gd.json"),
-            Self::Luxembourgish => include_str!("../lang/lb.json"),
-            Self::Kyrgyz => include_str!("../lang/ky.json"),
-            Self::Kannada => include_str!("../lang/kn.json"),
-            Self::Maltese => include_str!("../lang/mt.json"),
-            Self::Esperanto => include_str!("../lang/eo.json"),
-            Self::Hawaiian => include_str!("../lang/haw.json"),
-            Self::Igbo => include_str!("../lang/ig.json"),
-            Self::Latin => include_str!("../lang/la.json"),
-            Self::Tatar => include_str!("../lang/tt.json"),
-            Self::Yiddish => include_str!("../lang/yi.json"),
-            Self::Yoruba => include_str!("../lang/yo.json"),
-            Self::Zulu => include_str!("../lang/zu.json"),
-            Self::Bashkir => include_str!("../lang/ba.json"),
-            Self::Breton => include_str!("../lang/br.json"),
-            Self::Chuvash => include_str!("../lang/cv.json"),
-            Self::Faroese => include_str!("../lang/fo.json"),
-            Self::Friulian => include_str!("../lang/fur.json"),
-            Self::Limburgish => include_str!("../lang/li.json"),
-            Self::Lombard => include_str!("../lang/lmo.json"),
-            Self::Occitan => include_str!("../lang/oc.json"),
-            Self::Sakha => include_str!("../lang/sah.json"),
-            Self::NorthernSami => include_str!("../lang/se.json"),
-            Self::Silesian => include_str!("../lang/szl.json"),
-            Self::Venetian => include_str!("../lang/vec.json"),
-        }
-    }
+
 }
 
 static CURRENT: AtomicU8 = AtomicU8::new(0);
@@ -617,37 +433,15 @@ pub fn current() -> Language {
     Language::ALL[CURRENT.load(Ordering::Relaxed) as usize % Language::ALL.len()]
 }
 
-type Table = HashMap<String, &'static str>;
-
-fn table(language: Language) -> &'static Table {
-    static TABLES: OnceLock<Vec<Table>> = OnceLock::new();
-    let tables = TABLES.get_or_init(|| {
-        Language::ALL
-            .iter()
-            .map(|l| {
-                serde_json::from_str::<HashMap<String, String>>(l.source())
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|(en, said)| (en, &*Box::leak(said.into_boxed_str())))
-                    .collect()
-            })
-            .collect()
-    });
-    let i = Language::ALL
-        .iter()
-        .position(|l| *l == language)
-        .unwrap_or(0);
-    &tables[i]
-}
-
-/// `en` in `language`, or `en` itself where the table lacks it.
-pub fn tr_in(language: Language, en: &str) -> &str {
-    table(language).get(en).copied().unwrap_or(en)
+/// English is the only supported launcher language. Legacy language settings still
+/// resolve to English rather than requiring their old translation files.
+pub fn tr_in(_language: Language, en: &str) -> &str {
+    en
 }
 
 /// `en` in the launcher's language.
 pub fn tr(en: &str) -> &str {
-    tr_in(current(), en)
+    en
 }
 
 /// `en` in the launcher's language with its `{name}` holes filled.
